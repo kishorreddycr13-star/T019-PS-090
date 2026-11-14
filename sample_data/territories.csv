@@ -1,0 +1,5 @@
+territory_id,territory_name,utc_offset_minutes
+IN,India,330
+AE,United Arab Emirates,240
+SG,Singapore,480
+US,United States (East),-240

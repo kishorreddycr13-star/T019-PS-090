@@ -1,0 +1,10 @@
+# OTT Rights and Royalty Engine (PS-090) Dependencies
+sqlalchemy>=2.0.25
+pydantic>=2.6.0
+pydantic-settings>=2.1.0
+alembic>=1.13.1
+psycopg2-binary>=2.9.9
+pytest>=8.0.0
+pytest-asyncio>=0.23.5
+python-dateutil>=2.8.2
+pytz>=2024.1
