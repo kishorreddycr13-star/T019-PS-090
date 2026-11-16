@@ -1,0 +1,113 @@
+================================================================================
+OTT RIGHTS & ROYALTY ENGINE (PS-090) - EXECUTION & CLI COMMANDS
+================================================================================
+
+--------------------------------------------------------------------------------
+1. PREREQUISITES & ENVIRONMENT SETUP
+--------------------------------------------------------------------------------
+# Navigate to the project root directory
+cd "c:\Users\kisho\OneDrive\ドキュメント\projects\ott_engine"
+# (or cd into wherever the ott_engine repository is located)
+
+# Install required Python dependencies (Python 3.10+ required)
+pip install -r requirements.txt
+
+
+--------------------------------------------------------------------------------
+2. DATABASE INITIALIZATION & DATA SYNC
+--------------------------------------------------------------------------------
+# Initialize SQLite database schema (creates all 20 relational tables)
+python scripts/init_db.py
+
+# Ingest sample CSV datasets into the database
+python scripts/sync_sample_data_to_db.py
+
+# Verify database schema integrity, foreign keys, and record counts
+python scripts/verify_schema.py
+
+
+--------------------------------------------------------------------------------
+3. RUN END-TO-END EVALUATION ENGINE
+--------------------------------------------------------------------------------
+# Run the pipeline with default sample_data and evaluation_outputs directories:
+python run_engine.py
+
+# Or specify custom input dataset and output destination explicitly:
+python run_engine.py sample_data evaluation_outputs
+
+
+--------------------------------------------------------------------------------
+4. TEST SUITES & SCENARIO VERIFICATION
+--------------------------------------------------------------------------------
+# Run the entire test suite across all 10 phases (146 tests)
+python -m unittest discover -s tests -p "test_*.py"
+
+# Run the planted scenario and business rule trap verifier
+python tests/test_planted_scenarios.py
+
+# Run Phase 10 full integration tests
+python -m unittest tests/test_full_integration.py
+
+# Run monthly settlement tests
+python -m unittest tests/test_monthly_settlement.py
+
+
+--------------------------------------------------------------------------------
+5. INSPECT GENERATED CSV DELIVERABLES (PowerShell)
+--------------------------------------------------------------------------------
+# Open evaluation outputs folder in Windows Explorer
+explorer evaluation_outputs
+
+# View top 10 rows of Licence Validation deliverable (55 rows)
+Get-Content evaluation_outputs\licence_validation.csv -Head 10
+
+# View top 10 rows of View Decisions deliverable (2,132 rows)
+Get-Content evaluation_outputs\view_decisions.csv -Head 10
+
+# View top 10 rows of Title Shares deliverable (480 rows)
+Get-Content evaluation_outputs\title_shares.csv -Head 10
+
+# View top 10 rows of Monthly Settlements deliverable (165 rows)
+Get-Content evaluation_outputs\settlements.csv -Head 10
+
+
+--------------------------------------------------------------------------------
+6. OPERATIONAL MANAGEMENT CLI (`management_cli.py`)
+--------------------------------------------------------------------------------
+# 1. Rights Calendar report for a title:
+python cli/management_cli.py report calendar --title-id TTL-001
+
+# 2. Monthly Licensor Settlement Statement:
+python cli/management_cli.py report settlement --licensor-id LIC-01 --month 2026-07
+
+# 3. View Decisions Report over a date window:
+python cli/management_cli.py report views --from-date 2026-07-01 --to-date 2026-07-01
+
+# 4. Check Playback Entitlement at a specific timestamp:
+python cli/management_cli.py playback check --title-id TTL-001 --territory IN --start-utc "2026-07-01 12:00:00"
+
+# 5. View Consumption Metering summary for a month/territory:
+python cli/management_cli.py metering summary --month 2026-07 --territory IN
+
+# 6. View Subscription & Ad Revenue Title Shares:
+python cli/management_cli.py revenue title-shares --month 2026-07 --territory IN
+
+# 7. Query specific licence contract details:
+python cli/management_cli.py licence get --licence-id LCN-001
+
+# 8. List all registered licensors:
+python cli/management_cli.py licensor list
+
+# 9. Trigger monthly settlement calculation pipeline:
+python cli/management_cli.py settlement run
+
+
+--------------------------------------------------------------------------------
+7. GIT REPOSITORY MANAGEMENT
+--------------------------------------------------------------------------------
+# Check git working tree status
+git status
+
+# Push commits to remote GitHub repository
+git push
+================================================================================
