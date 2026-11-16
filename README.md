@@ -105,10 +105,6 @@ ott_engine/
 │   ├── __init__.py
 │   ├── init_db.py                     # Creates tables and database constraints
 │   ├── sync_sample_data_to_db.py      # Imports CSV master datasets into SQLite database
-│   ├── seed_data.py                   # Initial mock seed script
-│   ├── migrate_phase6.py              # Schema migration for view metering
-│   ├── migrate_phase7.py              # Schema migration for revenue calculation
-│   ├── migrate_phase8.py              # Schema migration for royalty settlements
 │   └── verify_schema.py               # Integrity & foreign key verification script
 └── tests/
     ├── test_management_module.py      # Phase 1 & 2 tests (18 tests)
