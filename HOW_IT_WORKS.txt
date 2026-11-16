@@ -1,0 +1,169 @@
+================================================================================
+HOW THE OTT RIGHTS & ROYALTY ENGINE WORKS (A SIMPLE GUIDE)
+================================================================================
+
+1. WHAT IS THIS PROJECT?
+--------------------------------------------------------------------------------
+Think of this project like the financial and legal brain of an OTT streaming 
+platform (like Netflix, Disney+ Hotstar, or Prime Video).
+
+When an OTT platform streams movies and TV shows, it does NOT own all of them. 
+Instead, it licenses them from studios/production houses (Licensors) under strict 
+contracts. 
+
+This engine automatically does three big jobs:
+  1. Checks if a movie is legally allowed to play in a country right now.
+  2. Tracks who watched what, for how long, and filters out spam or short clicks.
+  3. Calculates the exact money owed to each studio every month (subscription 
+     revenue, ad revenue, taxes, advances, and splits down to the last paisa).
+
+
+================================================================================
+2. THE 5-STEP PIPELINE (HOW DATA FLOWS)
+================================================================================
+
+  [ Input Data ]
+  (Titles, Licences, View Events, Subscription & Ad Revenue)
+         │
+         ▼
+  ┌──────────────────────────────┐
+  │ STEP 1: Licence Validation   │  --> Checks contracts, dates, exclusivity,
+  └──────────────┬───────────────┘      and cinema/TV release holdback rules.
+                 │
+                 ▼
+  ┌──────────────────────────────┐
+  │ STEP 2: Playback Eligibility │  --> Checks if a user in IN, US, SG, or AE
+  └──────────────┬───────────────┘      can click "PLAY" at this local time.
+                 │
+                 ▼
+  ┌──────────────────────────────┐
+  │ STEP 3: View Metering        │  --> Did they watch at least 2 mins (or 50%)?
+  └──────────────┬───────────────┘      Ignores duplicate views within 24 hours.
+                 │
+                 ▼
+  ┌──────────────────────────────┐
+  │ STEP 4: Revenue Allocation   │  --> 60% of Premium subs divided by hours;
+  └──────────────┬───────────────┘      55% of Ad revenue divided by impressions.
+                 │
+                 ▼
+  ┌──────────────────────────────┐
+  │ STEP 5: Royalty Settlement   │  --> Deducts advances (MG), enforces caps,
+  └──────────────┬───────────────┘      deducts TDS taxes, splits among partners.
+                 │
+                 ▼
+  [ 4 Final Evaluation CSV Deliverables ]
+
+
+================================================================================
+3. DETAILED BREAKDOWN OF EACH STEP
+================================================================================
+
+--------------------------------------------------------------------------------
+STEP 1: LICENCE & WINDOW VALIDATION (Are the contracts valid?)
+--------------------------------------------------------------------------------
+Before any title can be shown on the platform, its contract must be verified:
+- Date Validity: Window start date must be before or equal to window end date.
+- Exclusivity: If Studio A has an EXCLUSIVE licence for Title X in India from 
+  June to August, Studio B cannot have a licence for that same title in India 
+  during overlapping dates.
+- Statutory Holdbacks: 
+  * A movie cannot stream on OTT until 45 days after its Cinema release.
+  * A TV show cannot stream on OTT until 7 days after its TV premiere.
+* Result: Creates `licence_validation.csv` (shows ACCEPTED or REJECTED).
+
+
+--------------------------------------------------------------------------------
+STEP 2: PLAYBACK ELIGIBILITY (Can the user watch right now?)
+--------------------------------------------------------------------------------
+When a user clicks "Play", the system checks:
+- Timezones: OTT contracts specify dates in the territory's local time (IST in 
+  India, EDT/EST in the US, SGT in Singapore, GST in UAE). The engine converts 
+  UTC server timestamps into local territory time.
+- Midnight Straddles: A title is playable right up to 23:59:59 on its end date. 
+  If a user starts watching at 23:59:59, the system gives a 4-hour grace buffer 
+  so they can finish the movie even after midnight.
+* Result: Playback is marked ALLOWED or DENIED.
+
+
+--------------------------------------------------------------------------------
+STEP 3: VIEW TRACKING & METERING (Which views actually count?)
+--------------------------------------------------------------------------------
+Not every click on a video is a valid view:
+- Qualifying Threshold: A view only counts for revenue if the user watched for 
+  at least 120 seconds (2 minutes), OR at least half the total runtime for very 
+  short videos.
+- 24-Hour Deduplication: If the same subscriber re-watches the same movie 
+  multiple times within 24 hours, it is counted as ONE view session.
+- Late Views: Views must be ingested before the monthly cutoff (the 10th of the 
+  following month). Late views are tagged as LATE_VIEW and moved into next 
+  month's settlement.
+* Result: Creates `view_decisions.csv` (shows whether each view was counted).
+
+
+--------------------------------------------------------------------------------
+STEP 4: REVENUE POOL CALCULATION (How much money is in the pot?)
+--------------------------------------------------------------------------------
+Money comes from two streams:
+1. Subscription Pool (SVOD - Premium):
+   - 60% of total territory subscription fees are put into a royalty pool.
+   - Each title gets a share of this pool based on its proportion of total 
+     qualifying view-hours watched that month.
+2. Advertisement Pool (AVOD - Free with Ads):
+   - 55% of territory ad revenue is put into an ad royalty pool.
+   - Each title gets a share based on its proportion of ad impressions served.
+* Result: Creates `title_shares.csv` (monthly pool and ad shares per title).
+
+
+--------------------------------------------------------------------------------
+STEP 5: ROYALTY SETTLEMENT & TAXATION (How much does each studio get paid?)
+--------------------------------------------------------------------------------
+Once a title's gross share is known, the engine calculates the final payment:
+- Minimum Guarantee (MG): Some studios are promised an upfront advance payment 
+  (e.g., Rs 100,000) in Month 1. In subsequent months, their gross earnings are 
+  used to "recoup" (pay back) this advance before they receive extra cash.
+- Payment Caps: Some contracts have a maximum lifetime payout cap. Once reached, 
+  status becomes CAPPED, and excess earnings are retained by the platform.
+- Withholding Tax (TDS):
+  * Domestic Indian Licensors: 10% statutory tax is deducted.
+  * Foreign Licensors: 20% statutory tax, or discounted treaty rates (e.g., 15% 
+    under DTAA tax treaties) where registered.
+- Co-Licensor Splits with Zero Leakage: If a movie is co-owned by 3 partners 
+  (e.g. 33.33%, 33.33%, 33.34%), money is split to exact paise (2 decimal places). 
+  Any 1-paisa rounding fraction is given to the largest split partner so no 
+  money is lost.
+* Result: Creates `settlements.csv` (exact net payable amount per licensor).
+
+
+================================================================================
+4. THE 4 FINAL OUTPUT FILES (DELIVERABLES)
+================================================================================
+When `python run_engine.py` finishes, it writes 4 CSV files into `evaluation_outputs/`:
+
+1. `licence_validation.csv`:
+   Lists every contract request and whether it was ACCEPTED or REJECTED.
+
+2. `view_decisions.csv`:
+   Lists every single play event, local watch time, whether it qualified, and 
+   whether it counted.
+
+3. `title_shares.csv`:
+   Monthly breakdown by territory of subscription view-hours, pool shares, ad 
+   impressions, and total title revenue.
+
+4. `settlements.csv`:
+   The monthly financial ledger for each studio: Gross share, MG advances, 
+   recoupment, tax deducted (TDS), and final Net Payable amount.
+
+
+================================================================================
+5. KEY STRENGTHS OF THIS ENGINE
+================================================================================
+- Mathematical Accuracy: Uses Python `Decimal` (never floating-point numbers) 
+  so calculations never suffer from rounding errors.
+- Timezone Smart: Correctly handles daylight savings and local offsets (IST, 
+  EDT, SGT, GST).
+- Full Audit Trail: Every transaction and settlement step is cryptographically 
+  hashed (SHA-256) into a relational database (`ott_engine.db`) for compliance.
+- Fast & Automated: Processes thousands of view events and dozens of contracts 
+  in seconds via `run_engine.py`.
+================================================================================
